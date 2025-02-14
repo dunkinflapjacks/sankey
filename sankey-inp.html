@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="JMM">
+<title>Sankey Diagram</title>
+<!-- Load the latest version of D3.js (v5 or above) -->
+<script src="https://d3js.org/d3.v5.min.js"></script>
+
+<!-- Load the compatible d3-sankey version -->
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.7.0/build/d3-sankey.min.js"></script>
+
+<style>
+body { font: 10px sans-serif; }
+.link {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: .2;
+}
+.node rect {
+  cursor: move;
+  fill-opacity: .9;
+  shape-rendering: crispEdges;
+}
+.node text {
+  pointer-events: none;
+  text-shadow: 0 1px 0 #fff;
+}
+input[type="number"] {
+  width: 80px;
+  margin: 2px;
+}
+input[type="button"] {
+  margin-top: 10px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+svg {
+  margin-top: 20px; /* Optional: Adds some space between the inputs and the diagram */
+}
+</style>
+</head>
+<body>
+
+<h2>Sankey Diagram</h2>
+
+<div id="inputs">
+  <h3>Define Links</h3>
+  <!-- Input fields for links -->
+  <div>
+    <label for="linkAtoD">A → D:</label>
+    <input type="number" id="linkAtoD" value="20">
+  </div>
+  <div>
+    <label for="linkAtoE">A → E:</label>
+    <input type="number" id="linkAtoE" value="10">
+  </div>
+  <div>
+    <label for="linkBtoE">B → E:</label>
+    <input type="number" id="linkBtoE" value="30">
+  </div>
+  <div>
+    <label for="linkBtoF">B → F:</label>
+    <input type="number" id="linkBtoF" value="15">
+  </div>
+  <div>
+    <label for="linkCtoF">C → F:</label>
+    <input type="number" id="linkCtoF" value="25">
+  </div>
+  <div>
+    <label for="linkCtoD">C → D:</label>
+    <input type="number" id="linkCtoD" value="5">
+  </div>
+  <input type="button" value="Update Diagram" onclick="updateSankey()">
+</div>
+
+<svg width="960" height="500"></svg>
+
+<script>
+const data = {
+  nodes: [
+    { name: "A" }, { name: "B" }, { name: "C" },
+    { name: "D" }, { name: "E" }, { name: "F" }
+  ],
+  links: [
+    { source: "A", target: "D", value: 20 },
+    { source: "A", target: "E", value: 10 },
+    { source: "B", target: "E", value: 30 },
+    { source: "B", target: "F", value: 15 },
+    { source: "C", target: "F", value: 25 },
+    { source: "C", target: "D", value: 5 }
+  ]
+};
+
+// Initialize the Sankey layout
+const sankey = d3.sankey()
+    .nodeWidth(15)
+    .nodePadding(10)
+    .size([960, 500]);
+
+// Create the SVG element for the Sankey diagram
+const svg = d3.select("svg"),
+      width = +svg.attr("width"),
+      height = +svg.attr("height");
+
+const formatNumber = d3.format(",.0f"),
+      format = function(d) { return formatNumber(d); },
+      color = d3.scaleOrdinal(d3.schemeCategory10);
+
+function updateSankey() {
+  // Get updated link values from the input fields
+  const updatedLinks = [
+    { source: "A", target: "D", value: +document.getElementById("linkAtoD").value },
+    { source: "A", target: "E", value: +document.getElementById("linkAtoE").value },
+    { source: "B", target: "E", value: +document.getElementById("linkBtoE").value },
+    { source: "B", target: "F", value: +document.getElementById("linkBtoF").value },
+    { source: "C", target: "F", value: +document.getElementById("linkCtoF").value },
+    { source: "C", target: "D", value: +document.getElementById("linkCtoD").value }
+  ];
+
+  // Map each link's source and target to node indices
+  updatedLinks.forEach(function(link) {
+    link.source = data.nodes.findIndex(function(node) { return node.name === link.source; });
+    link.target = data.nodes.findIndex(function(node) { return node.name === link.target; });
+  });
+
+  // Update the data's links with the newly calculated links
+  data.links = updatedLinks;
+
+  // Generate the Sankey graph
+  const graph = sankey(data);
+
+  // Remove existing links and nodes to redraw
+  svg.selectAll("*").remove();
+
+  // Create the links
+  const link = svg.append("g")
+    .attr("class", "links")
+    .attr("fill", "none")
+    .attr("stroke", "#000")
+    .attr("stroke-opacity", 0.2)
+  .selectAll("path")
+  .data(graph.links)
+  .enter().append("path")
+    .attr("d", d3.sankeyLinkHorizontal())
+    .attr("stroke-width", function(d) { return Math.max(1, d.width); });
+
+  link.append("title")
+    .text(function(d) { return d.source.name + " → " + d.target.name + "\n" + format(d.value); });
+
+  // Create the nodes
+  const node = svg.append("g")
+    .attr("class", "nodes")
+    .attr("font-family", "sans-serif")
+    .attr("font-size", 10)
+  .selectAll("g")
+  .data(graph.nodes)
+  .enter().append("g");
+
+  node.append("rect")
+    .attr("x", function(d) { return d.x0; })
+    .attr("y", function(d) { return d.y0; })
+    .attr("height", function(d) { return d.y1 - d.y0; })
+    .attr("width", sankey.nodeWidth())
+    .attr("fill", function(d) { return color(d.name.replace(/ .*/, "")); })
+    .attr("stroke", "#000");
+
+  node.append("text")
+    .attr("x", function(d) { return d.x0 - 6; })
+    .attr("y", function(d) { return (d.y1 + d.y0) / 2; })
+    .attr("dy", "0.35em")
+    .attr("text-anchor", "end")
+    .text(function(d) { return d.name; })
+  .filter(function(d) { return d.x0 < width / 2; })
+    .attr("x", function(d) { return d.x1 + 6; })
+    .attr("text-anchor", "start");
+
+  // Add the values of each node
+  node.append("text")
+    .attr("x", function(d) { return (d.x1 + d.x0) / 2; })
+    .attr("y", function(d) { return (d.y1 + d.y0) / 2; })
+    .attr("dy", "0.35em")
+    .attr("text-anchor", "middle")
+    .attr("fill", "#000")
+    .text(function(d) { return format(d.value); });
+}
+
+// Initial call to render the diagram
+updateSankey();
+</script>
+
+</body>
+</html>
