@@ -35,160 +35,548 @@ input[type="button"] {
   margin-top: 10px;
   padding: 5px 10px;
   cursor: pointer;
+  margin-right: 5px;
+}
+
+input[type="text"] {
+  padding: 2px 5px;
+  margin: 2px;
+}
+
+.remove-link {
+  background-color: darkred;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  margin-left: 5px;
 }
 
 svg {
-  margin-top: 20px; /* Optional: Adds some space between the inputs and the diagram */
+  margin-top: 20px;
+  margin-bottom: 150px;
 }
+
+.buttons-container {
+  margin-bottom: 3%;
+  display: flex;
+  gap: 10px;
+}
+
+.toggle-section {
+  display: block; /* Initially visible */
+}
+
+.toggle-button {
+  cursor: pointer;
+  background-color: white;
+  color: black;
+  border: none;
+  border-radius: 5px;
+}
+
+.toggle-button:hover {
+  background-color: cornflowerblue;
+}
+
+.editable-title {
+  text-align: center;
+  margin: 15px auto;
+  padding: 5px;
+  font-size: 24px;
+  font-weight: bold;
+  width: 960px; /* Match diagram width */
+  border: none; /* Remove border */
+}
+
+.side-labels {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0;
+  width: 960px;
+}
+
+.side-label {
+  padding: 5px;
+  width: 150px;
+  font-weight: bold;
+  border: none; /* Remove border */
+}
+
+.link-input {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.link-name {
+  width: 60px;
+}
+
+.settings-section {
+  margin: 15px 0;
+}
+
+.settings-section label {
+  margin-right: 5px;
+}
+
 </style>
 </head>
+
+
 <body>
 
-<h2>Sankey Diagram</h2>
+<div class="toggle-container">
+  <button id="toggle-button" class="toggle-button" title="Hide diagram inputs">[-]</button>
+  <div id="toggle-section" class="toggle-section">
+    <div id="inputs">
+      <h3>Define Links</h3>
+      <!-- Input fields for links will be generated dynamically -->
+      <div id="link-inputs-container">
+        <!-- Links will be added here dynamically -->
+      </div>
+      
+      <!-- Settings section -->
+      <div class="settings-section">
+        <label for="node-width">Node Width:</label>
+        <input type="number" id="node-width" value="15" min="5" max="100">
+      </div>
+      
+      <div class="buttons-container">
+        <input type="button" id="updateButton" value="Update Diagram" onClick="updateSankey()"/>
+        <input type="button" id="saveButton" value="Save Diagram" onClick="saveDiagram()"/>
+        <input type="file" id="loadFile" style="display:none" onChange="loadDiagram(event)"/>
+        <input type="button" id="loadButton" value="Load Diagram" onClick="document.getElementById('loadFile').click()"/>
+      </div>
+    </div>
+  </div>
+</div>
 
-<div id="inputs">
-  <h3>Define Links</h3>
-  <!-- Input fields for links -->
-  <div>
-    <label for="linkAtoD">A → D:</label>
-    <input type="number" id="linkAtoD" value="20">
-  </div>
-  <div>
-    <label for="linkAtoE">A → E:</label>
-    <input type="number" id="linkAtoE" value="10">
-  </div>
-  <div>
-    <label for="linkBtoE">B → E:</label>
-    <input type="number" id="linkBtoE" value="30">
-  </div>
-  <div>
-    <label for="linkBtoF">B → F:</label>
-    <input type="number" id="linkBtoF" value="15">
-  </div>
-  <div>
-    <label for="linkCtoF">C → F:</label>
-    <input type="number" id="linkCtoF" value="25">
-  </div>
-  <div>
-    <label for="linkCtoD">C → D:</label>
-    <input type="number" id="linkCtoD" value="5">
-  </div>
-  <input type="button" value="Update Diagram" onclick="updateSankey()">
+<!-- Editable title -->
+<div>
+  <input type="text" id="diagram-title" class="editable-title" value="Sankey Diagram" placeholder="Enter diagram title here">
+</div>
+
+<!-- Side labels -->
+<div class="side-labels">
+  <input type="text" id="left-label" class="side-label" value="Sources" placeholder="Left side label">
+  <input type="text" id="right-label" class="side-label" value="Targets" placeholder="Right side label">
 </div>
 
 <svg width="960" height="500"></svg>
 
 <script>
-const data = {
-  nodes: [
-    { name: "A" }, { name: "B" }, { name: "C" },
-    { name: "D" }, { name: "E" }, { name: "F" }
-  ],
-  links: [
-    { source: "A", target: "D", value: 20 },
-    { source: "A", target: "E", value: 10 },
-    { source: "B", target: "E", value: 30 },
-    { source: "B", target: "F", value: 15 },
-    { source: "C", target: "F", value: 25 },
-    { source: "C", target: "D", value: 5 }
-  ]
-};
+  // Initial data structure
+  const data = {
+    nodes: [
+      {name: "A"}, {name: "B"}, {name: "C"},
+      {name: "D"}, {name: "E"}, {name: "F"}
+    ],
+    links: [
+      {source: "A", target: "D", value: 20, id: "link-0"},
+      {source: "A", target: "E", value: 10, id: "link-1"},
+      {source: "B", target: "E", value: 30, id: "link-2"},
+      {source: "B", target: "F", value: 15, id: "link-3"},
+      {source: "C", target: "F", value: 25, id: "link-4"},
+      {source: "C", target: "D", value: 5, id: "link-5"}
+    ]
+  };
 
-// Initialize the Sankey layout
-const sankey = d3.sankey()
-    .nodeWidth(15)
-    .nodePadding(10)
-    .size([960, 500]);
+  // Initialize the Sankey layout
+  let sankey = d3.sankey()
+          .nodeWidth(15)
+          .nodePadding(10)
+          .size([960, 500]);
 
-// Create the SVG element for the Sankey diagram
-const svg = d3.select("svg"),
-      width = +svg.attr("width"),
-      height = +svg.attr("height");
+  // Create the SVG element for the Sankey diagram
+  const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height");
 
-const formatNumber = d3.format(",.0f"),
-      format = function(d) { return formatNumber(d); },
-      color = d3.scaleOrdinal(d3.schemeCategory10);
+  const formatNumber = d3.format(",.0f"),
+          format = function (d) {
+            return formatNumber(d);
+          },
+          color = d3.scaleOrdinal(d3.schemeCategory10);
 
-function updateSankey() {
-  // Get updated link values from the input fields
-  const updatedLinks = [
-    { source: "A", target: "D", value: +document.getElementById("linkAtoD").value },
-    { source: "A", target: "E", value: +document.getElementById("linkAtoE").value },
-    { source: "B", target: "E", value: +document.getElementById("linkBtoE").value },
-    { source: "B", target: "F", value: +document.getElementById("linkBtoF").value },
-    { source: "C", target: "F", value: +document.getElementById("linkCtoF").value },
-    { source: "C", target: "D", value: +document.getElementById("linkCtoD").value }
-  ];
+  // Function to generate link input fields
+  function generateLinkInputs() {
+    const container = document.getElementById('link-inputs-container');
+    container.innerHTML = ''; // Clear existing inputs
+    
+    data.links.forEach((link, index) => {
+      const div = document.createElement('div');
+      div.className = 'link-input';
+      div.id = link.id;
+      
+      // Source input
+      const sourceInput = document.createElement('input');
+      sourceInput.type = 'text';
+      sourceInput.className = 'link-name';
+      sourceInput.value = link.source;
+      sourceInput.dataset.type = 'source';
+      sourceInput.dataset.linkId = link.id;
+      
+      // Arrow
+      const arrowSpan = document.createElement('span');
+      arrowSpan.textContent = ' → ';
+      
+      // Target input
+      const targetInput = document.createElement('input');
+      targetInput.type = 'text';
+      targetInput.className = 'link-name';
+      targetInput.value = link.target;
+      targetInput.dataset.type = 'target';
+      targetInput.dataset.linkId = link.id;
+      
+      // Value label
+      const valueLabel = document.createElement('label');
+      valueLabel.textContent = ' Value: ';
+      
+      // Value input
+      const valueInput = document.createElement('input');
+      valueInput.type = 'number';
+      valueInput.value = link.value;
+      valueInput.min = '0';
+      valueInput.dataset.type = 'value';
+      valueInput.dataset.linkId = link.id;
+      
+      // Remove button
+      const removeButton = document.createElement('button');
+      removeButton.className = 'remove-link';
+      removeButton.textContent = '-';
+      removeButton.title = 'Remove this link';
+      removeButton.dataset.linkId = link.id;
+      removeButton.onclick = function() { removeLink(link.id); };
+      
+      // Add all elements to the div
+      div.appendChild(sourceInput);
+      div.appendChild(arrowSpan);
+      div.appendChild(targetInput);
+      div.appendChild(valueLabel);
+      div.appendChild(valueInput);
+      div.appendChild(removeButton);
+      
+      container.appendChild(div);
+      
+      // Add event listeners for the name inputs
+      sourceInput.addEventListener('change', function() {
+        updateLinkName(link.id, 'source', this.value);
+      });
+      
+      targetInput.addEventListener('change', function() {
+        updateLinkName(link.id, 'target', this.value);
+      });
+      
+      valueInput.addEventListener('change', function() {
+        updateLinkValue(link.id, +this.value);
+      });
+    });
+    
+    // Add a button to add new links
+    const addLinkButton = document.createElement('input');
+    addLinkButton.type = 'button';
+    addLinkButton.value = 'Add New Link';
+    addLinkButton.onclick = addNewLink;
+    container.appendChild(addLinkButton);
+  }
+  
+  // Function to update link name (source or target)
+  function updateLinkName(linkId, type, newName) {
+    const linkIndex = data.links.findIndex(link => link.id === linkId);
+    if (linkIndex !== -1) {
+      data.links[linkIndex][type] = newName;
+      
+      // Check if the node exists
+      let nodeExists = data.nodes.some(node => node.name === newName);
+      if (!nodeExists) {
+        data.nodes.push({ name: newName });
+      }
+      
+      // Don't update the diagram yet - wait for the user to click update
+    }
+  }
+  
+  // Function to update link value
+  function updateLinkValue(linkId, newValue) {
+    const linkIndex = data.links.findIndex(link => link.id === linkId);
+    if (linkIndex !== -1) {
+      data.links[linkIndex].value = newValue;
+      // Don't update the diagram yet - wait for the user to click update
+    }
+  }
+  
+  // Function to remove a link
+  function removeLink(linkId) {
+    const linkIndex = data.links.findIndex(link => link.id === linkId);
+    if (linkIndex !== -1) {
+      data.links.splice(linkIndex, 1);
+      generateLinkInputs(); // Regenerate the inputs
+      // Don't update the diagram yet - wait for the user to click update
+    }
+  }
+  
+  // Function to add a new link
+  function addNewLink() {
+    const newLinkId = `link-${data.links.length}`;
+    data.links.push({
+      source: "New", 
+      target: "Node", 
+      value: 10, 
+      id: newLinkId
+    });
+    
+    // Check if these nodes exist, if not add them
+    if (!data.nodes.some(node => node.name === "New")) {
+      data.nodes.push({ name: "New" });
+    }
+    if (!data.nodes.some(node => node.name === "Node")) {
+      data.nodes.push({ name: "Node" });
+    }
+    
+    generateLinkInputs(); // Regenerate the inputs
+    // Don't update the diagram yet - wait for the user to click update
+  }
 
-  // Map each link's source and target to node indices
-  updatedLinks.forEach(function(link) {
-    link.source = data.nodes.findIndex(function(node) { return node.name === link.source; });
-    link.target = data.nodes.findIndex(function(node) { return node.name === link.target; });
+  function updateSankey() {
+    // Get node width from the input
+    const nodeWidth = parseInt(document.getElementById('node-width').value);
+    if (isNaN(nodeWidth) || nodeWidth < 5) {
+      document.getElementById('node-width').value = 15;
+    } else {
+      // Update the sankey nodeWidth
+      sankey = sankey.nodeWidth(nodeWidth);
+    }
+    
+    // Collect all unique node names from links
+    const nodeNames = new Set();
+    data.links.forEach(link => {
+      nodeNames.add(link.source);
+      nodeNames.add(link.target);
+    });
+    
+    // Update the nodes array
+    data.nodes = Array.from(nodeNames).map(name => ({ name }));
+    
+    // Create a copy of the links with proper node references
+    const processedLinks = data.links.map(link => ({
+      source: link.source,
+      target: link.target,
+      value: link.value
+    }));
+    
+    // Map each link's source and target to node indices
+    processedLinks.forEach(function (link) {
+      link.source = data.nodes.findIndex(function (node) {
+        return node.name === link.source;
+      });
+      link.target = data.nodes.findIndex(function (node) {
+        return node.name === link.target;
+      });
+    });
+
+    // Create a data object for d3-sankey
+    const sankeyData = {
+      nodes: data.nodes,
+      links: processedLinks
+    };
+
+    // Generate the Sankey graph
+    const graph = sankey(sankeyData);
+
+    // Remove existing links and nodes to redraw
+    svg.selectAll("*").remove();
+
+    // Create the links
+    const link = svg.append("g")
+            .attr("class", "links")
+            .attr("fill", "none")
+            .attr("stroke", "#000")
+            .attr("stroke-opacity", 0.2)
+            .selectAll("path")
+            .data(graph.links)
+            .enter().append("path")
+            .attr("d", d3.sankeyLinkHorizontal())
+            .attr("stroke-width", function (d) {
+              return Math.max(1, d.width);
+            });
+
+    link.append("title")
+            .text(function (d) {
+              return d.source.name + " → " + d.target.name + "\n" + format(d.value);
+            });
+
+    // Create the nodes
+    const node = svg.append("g")
+            .attr("class", "nodes")
+            .attr("font-family", "sans-serif")
+            .attr("font-size", 10)
+            .selectAll("g")
+            .data(graph.nodes)
+            .enter().append("g");
+
+    node.append("rect")
+            .attr("x", function (d) {
+              return d.x0;
+            })
+            .attr("y", function (d) {
+              return d.y0;
+            })
+            .attr("height", function (d) {
+              return d.y1 - d.y0;
+            })
+            .attr("width", sankey.nodeWidth())
+            .attr("fill", function (d) {
+              return color(d.name.replace(/ .*/, ""));
+            })
+            .attr("stroke", "#000");
+
+    node.append("text")
+            .attr("x", function (d) {
+              return d.x0 - 6;
+            })
+            .attr("y", function (d) {
+              return (d.y1 + d.y0) / 2;
+            })
+            .attr("dy", "0.35em")
+            .attr("text-anchor", "end")
+            .text(function (d) {
+              return d.name;
+            })
+            .filter(function (d) {
+              return d.x0 < width / 2;
+            })
+            .attr("x", function (d) {
+              return d.x1 + 6;
+            })
+            .attr("text-anchor", "start");
+
+    // Add the values inside each node rectangle
+    node.append("text")
+            .attr("x", function (d) {
+              return (d.x0 + d.x1) / 2;
+            })
+            .attr("y", function (d) {
+              return (d.y1 + d.y0) / 2;
+            })
+            .attr("dy", "0.35em")
+            .attr("text-anchor", "middle")
+            .attr("fill", "white") // White text for contrast
+            .text(function (d) {
+              return format(d.value);
+            })
+            .attr("pointer-events", "none"); // Make sure text doesn't interfere with interactions
+            
+    // Add side labels to the diagram
+    const leftLabelValue = document.getElementById('left-label').value;
+    const rightLabelValue = document.getElementById('right-label').value;
+    
+    // Left side label (above the diagram, not part of it)
+    svg.append("text")
+      .attr("x", 50)
+      .attr("y", 20)
+      .attr("text-anchor", "middle")
+      .attr("font-size", "14px")
+      .attr("font-weight", "bold")
+      .text("");
+      
+    // Right side label (above the diagram, not part of it)
+    svg.append("text")
+      .attr("x", width - 50)
+      .attr("y", 20)
+      .attr("text-anchor", "middle")
+      .attr("font-size", "14px")
+      .attr("font-weight", "bold")
+      .text("");
+  }
+  
+  // Function to save the current diagram state
+  function saveDiagram() {
+    const diagramState = {
+      title: document.getElementById('diagram-title').value,
+      leftLabel: document.getElementById('left-label').value,
+      rightLabel: document.getElementById('right-label').value,
+      nodeWidth: document.getElementById('node-width').value,
+      data: {
+        nodes: data.nodes.map(node => ({ name: node.name })),
+        links: data.links.map(link => ({ source: link.source, target: link.target, value: link.value }))
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(diagramState)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${diagramState.title.replace(/\s+/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  
+  // Function to load a saved diagram
+  function loadDiagram(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const savedState = JSON.parse(e.target.result);
+        
+        // Update UI elements
+        document.getElementById('diagram-title').value = savedState.title || 'Sankey Diagram';
+        document.getElementById('left-label').value = savedState.leftLabel || 'Sources';
+        document.getElementById('right-label').value = savedState.rightLabel || 'Targets';
+        document.getElementById('node-width').value = savedState.nodeWidth || 15;
+        
+        // Update data
+        data.nodes = savedState.data.nodes || [];
+        data.links = savedState.data.links || [];
+        
+        // Regenerate the inputs and update the diagram
+        generateLinkInputs();
+        updateSankey();
+      } catch (error) {
+        console.error('Error loading diagram:', error);
+        alert('Error loading the diagram file. Please try a different file.');
+      }
+    };
+    reader.readAsText(file);
+  }
+  
+  // Initial setup
+  generateLinkInputs();
+  updateSankey();
+
+  // hide/show diagram inputs
+  const toggleButton = document.getElementById('toggle-button');
+  const toggleSection = document.getElementById('toggle-section');
+
+  toggleButton.addEventListener('click', () => {
+    if (toggleSection.style.display === 'none') {
+      toggleSection.style.display = 'block'; // Show the section
+      toggleButton.textContent = '[-]'; // Change the button to [-]
+      toggleButton.setAttribute('title', 'Hide diagram inputs');
+    } else {
+      toggleSection.style.display = 'none'; // Hide the section
+      toggleButton.textContent = '[+]'; // Change the button to [+]
+      toggleButton.setAttribute('title', 'Show diagram inputs');
+    }
   });
 
-  // Update the data's links with the newly calculated links
-  data.links = updatedLinks;
+  // Add event listener for the title change
+  document.getElementById('diagram-title').addEventListener('change', function() {
+    document.title = this.value; // Also update the page title
+  });
 
-  // Generate the Sankey graph
-  const graph = sankey(data);
+  // Add event listeners for the side labels
+  document.getElementById('left-label').addEventListener('change', updateSankey);
+  document.getElementById('right-label').addEventListener('change', updateSankey);
 
-  // Remove existing links and nodes to redraw
-  svg.selectAll("*").remove();
-
-  // Create the links
-  const link = svg.append("g")
-    .attr("class", "links")
-    .attr("fill", "none")
-    .attr("stroke", "#000")
-    .attr("stroke-opacity", 0.2)
-  .selectAll("path")
-  .data(graph.links)
-  .enter().append("path")
-    .attr("d", d3.sankeyLinkHorizontal())
-    .attr("stroke-width", function(d) { return Math.max(1, d.width); });
-
-  link.append("title")
-    .text(function(d) { return d.source.name + " → " + d.target.name + "\n" + format(d.value); });
-
-  // Create the nodes
-  const node = svg.append("g")
-    .attr("class", "nodes")
-    .attr("font-family", "sans-serif")
-    .attr("font-size", 10)
-  .selectAll("g")
-  .data(graph.nodes)
-  .enter().append("g");
-
-  node.append("rect")
-    .attr("x", function(d) { return d.x0; })
-    .attr("y", function(d) { return d.y0; })
-    .attr("height", function(d) { return d.y1 - d.y0; })
-    .attr("width", sankey.nodeWidth())
-    .attr("fill", function(d) { return color(d.name.replace(/ .*/, "")); })
-    .attr("stroke", "#000");
-
-  node.append("text")
-    .attr("x", function(d) { return d.x0 - 6; })
-    .attr("y", function(d) { return (d.y1 + d.y0) / 2; })
-    .attr("dy", "0.35em")
-    .attr("text-anchor", "end")
-    .text(function(d) { return d.name; })
-  .filter(function(d) { return d.x0 < width / 2; })
-    .attr("x", function(d) { return d.x1 + 6; })
-    .attr("text-anchor", "start");
-
-  // Add the values of each node
-  node.append("text")
-    .attr("x", function(d) { return (d.x1 + d.x0) / 2; })
-    .attr("y", function(d) { return (d.y1 + d.y0) / 2; })
-    .attr("dy", "0.35em")
-    .attr("text-anchor", "middle")
-    .attr("fill", "#000")
-    .text(function(d) { return format(d.value); });
-}
-
-// Initial call to render the diagram
-updateSankey();
 </script>
 
 </body>
